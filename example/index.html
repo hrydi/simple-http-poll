@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTTP Polling Example - Multi-Tab Safe</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: #e8f4f8;
+      border-left: 4px solid #3498db;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .info-box.warning {
+      background: #fff3cd;
+      border-left-color: #ffc107;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #ecf0f1;
+      border-radius: 4px;
+    }
+
+    .status-item {
+      flex: 1;
+    }
+
+    .status-item label {
+      display: block;
+      font-size: 12px;
+      color: #7f8c8d;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .status-item .value {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .status-item .value.active {
+      color: #27ae60;
+    }
+
+    .status-item .value.inactive {
+      color: #e74c3c;
+    }
+
+    .status-item .value.leader {
+      color: #3498db;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #229954;
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
+    .btn-secondary {
+      background: #95a5a6;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #7f8c8d;
+    }
+
+    .config-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+
+    .config-section h3 {
+      margin-bottom: 15px;
+      font-size: 16px;
+      color: #2c3e50;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .data-display {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .data-display pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .log-display {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 15px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-entry .timestamp {
+      color: #7f8c8d;
+      margin-right: 10px;
+    }
+
+    .log-entry.error {
+      color: #e74c3c;
+    }
+
+    .log-entry.success {
+      color: #27ae60;
+    }
+
+    .log-entry.info {
+      color: #3498db;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge.success {
+      background: #27ae60;
+      color: white;
+    }
+
+    .badge.error {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .badge.warning {
+      background: #f39c12;
+      color: white;
+    }
+
+    .badge.info {
+      background: #3498db;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>HTTP Polling Demo</h1>
+    <p class="subtitle">Multi-tab safe polling with automatic leader election</p>
+
+    <div class="info-box">
+      <strong>Try this:</strong>
+      Open this page in multiple tabs and start polling. Only one tab will make actual HTTP requests (the leader),
+      while other tabs receive the same data via cross-tab communication.
+    </div>
+
+    <div class="info-box warning">
+      <strong>Tab ID:</strong> <code id="tab-id">-</code>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <label>Polling Status</label>
+        <div class="value inactive" id="polling-status">Stopped</div>
+      </div>
+      <div class="status-item">
+        <label>Leadership</label>
+        <div class="value inactive" id="leader-status">Follower</div>
+      </div>
+      <div class="status-item">
+        <label>Request Count</label>
+        <div class="value" id="request-count">0</div>
+      </div>
+      <div class="status-item">
+        <label>Last Update</label>
+        <div class="value" id="last-update">Never</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn-primary" id="start-btn">Start Polling</button>
+      <button class="btn-danger" id="stop-btn" disabled>Stop Polling</button>
+      <button class="btn-secondary" id="clear-btn">Clear Data</button>
+      <button class="btn-secondary" id="clear-log-btn">Clear Log</button>
+    </div>
+
+    <!-- Configuration -->
+    <div class="config-section">
+      <h3>Configuration</h3>
+      <div class="form-group">
+        <label for="url-input">Endpoint URL</label>
+        <input
+          type="text"
+          id="url-input"
+          placeholder="https://api.example.com/data"
+          value="https://jsonplaceholder.typicode.com/todos/1"
+        >
+      </div>
+      <div class="form-group">
+        <label for="interval-input">Interval (milliseconds)</label>
+        <input
+          type="number"
+          id="interval-input"
+          min="1000"
+          step="1000"
+          value="5000"
+        >
+      </div>
+      <button class="btn-secondary" id="update-config-btn">Update Configuration</button>
+    </div>
+
+    <!-- Data Display -->
+    <h3>Latest Data</h3>
+    <div class="data-display">
+      <pre id="data-output">No data yet. Start polling to see results.</pre>
+    </div>
+
+    <!-- Log Display -->
+    <h3>Event Log</h3>
+    <div class="log-display" id="log-output"></div>
+  </div>
+
+  <script src="polling.js"></script>
+  <script>
+    // Initialize polling instance
+    let poller = null;
+    let requestCount = 0;
+
+    // DOM Elements
+    const tabIdEl = document.getElementById('tab-id');
+    const pollingStatusEl = document.getElementById('polling-status');
+    const leaderStatusEl = document.getElementById('leader-status');
+    const requestCountEl = document.getElementById('request-count');
+    const lastUpdateEl = document.getElementById('last-update');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const clearLogBtn = document.getElementById('clear-log-btn');
+    const urlInput = document.getElementById('url-input');
+    const intervalInput = document.getElementById('interval-input');
+    const updateConfigBtn = document.getElementById('update-config-btn');
+    const dataOutput = document.getElementById('data-output');
+    const logOutput = document.getElementById('log-output');
+
+    // Helper: Add log entry
+    function addLog(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="timestamp">[${timestamp}]</span>${message}`;
+
+      logOutput.insertBefore(entry, logOutput.firstChild);
+
+      // Keep only last 50 entries
+      while (logOutput.children.length > 50) {
+        logOutput.removeChild(logOutput.lastChild);
+      }
+    }
+
+    // Helper: Format time ago
+    function timeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 5) return 'Just now';
+      if (seconds < 60) return `${seconds}s ago`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      return `${Math.floor(seconds / 3600)}h ago`;
+    }
+
+    // Helper: Update UI based on polling state
+    function updatePollingUI(isPolling) {
+      if (isPolling) {
+        pollingStatusEl.textContent = 'Active';
+        pollingStatusEl.className = 'value active';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      } else {
+        pollingStatusEl.textContent = 'Stopped';
+        pollingStatusEl.className = 'value inactive';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    }
+
+    // Initialize poller
+    function initPoller() {
+      poller = new HTTPPolling({
+        url: urlInput.value,
+        interval: parseInt(intervalInput.value, 10),
+        fetchOptions: {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }
+      });
+
+      // Display tab ID
+      tabIdEl.textContent = poller.tabId;
+      addLog(`Initialized with Tab ID: ${poller.tabId}`, 'info');
+
+      // Set initial UI state based on polling state
+      updatePollingUI(poller.isPolling);
+      if (poller.isPolling) {
+        addLog('Synced polling state: Active (from other tabs)', 'info');
+      }
+
+      // Register callbacks
+      poller.onData((data) => {
+        requestCount++;
+        requestCountEl.textContent = requestCount;
+
+        const now = new Date();
+        lastUpdateEl.textContent = timeAgo(now);
+
+        // Display data
+        try {
+          const formatted = typeof data === 'string'
+            ? data
+            : JSON.stringify(data, null, 2);
+          dataOutput.textContent = formatted;
+        } catch (e) {
+          dataOutput.textContent = String(data);
+        }
+
+        const source = poller.isLeader() ? '(as leader)' : '(from leader)';
+        addLog(`Received data ${source}`, 'success');
+      });
+
+      poller.onError((error) => {
+        addLog(`Error: ${error.message}`, 'error');
+      });
+
+      poller.onLeaderChange((isLeader) => {
+        if (isLeader) {
+          leaderStatusEl.textContent = 'Leader';
+          leaderStatusEl.className = 'value leader';
+          addLog('Became leader tab', 'info');
+        } else {
+          leaderStatusEl.textContent = 'Follower';
+          leaderStatusEl.className = 'value inactive';
+          addLog('Lost leadership', 'info');
+        }
+      });
+
+      // Set initial leader status
+      if (poller.isLeader()) {
+        leaderStatusEl.textContent = 'Leader';
+        leaderStatusEl.className = 'value leader';
+      }
+
+      // Load last data if available
+      const lastData = poller.getLastData();
+      if (lastData) {
+        try {
+          const formatted = typeof lastData === 'string'
+            ? lastData
+            : JSON.stringify(lastData, null, 2);
+          dataOutput.textContent = formatted;
+          addLog('Loaded cached data from localStorage', 'info');
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      // Listen for polling state changes from other tabs
+      setupStateListener();
+    }
+
+    // Setup listener for state changes from other tabs
+    function setupStateListener() {
+      // Try BroadcastChannel first
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          const channel = new BroadcastChannel('http_polling_channel');
+          channel.onmessage = (event) => {
+            const message = event.data;
+            if (!message || !poller || message.tabId === poller.tabId) {
+              return; // Ignore our own messages
+            }
+
+            if (message.type === 'start_polling') {
+              updatePollingUI(true);
+              addLog('Polling started by another tab', 'info');
+            } else if (message.type === 'stop_polling') {
+              updatePollingUI(false);
+              addLog('Polling stopped by another tab', 'info');
+            }
+          };
+        } catch (e) {
+          console.warn('BroadcastChannel not available:', e);
+        }
+      }
+
+      // Also listen to localStorage for fallback
+      window.addEventListener('storage', (event) => {
+        if (!poller) return;
+
+        // Check if polling state changed
+        if (event.key === poller.stateKey && event.newValue) {
+          try {
+            const state = JSON.parse(event.newValue);
+            updatePollingUI(state.isPolling);
+          } catch (e) {
+            // Ignore
+          }
+        }
+      });
+    }
+
+    // Event Handlers
+    startBtn.addEventListener('click', () => {
+      if (!poller) {
+        initPoller();
+      }
+
+      poller.startPolling();
+      updatePollingUI(true);
+      addLog('Started polling', 'success');
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (poller) {
+        poller.stopPolling();
+        updatePollingUI(false);
+        addLog('Stopped polling', 'info');
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      dataOutput.textContent = 'No data yet. Start polling to see results.';
+      requestCount = 0;
+      requestCountEl.textContent = '0';
+      lastUpdateEl.textContent = 'Never';
+      addLog('Cleared data display', 'info');
+    });
+
+    clearLogBtn.addEventListener('click', () => {
+      logOutput.innerHTML = '';
+    });
+
+    updateConfigBtn.addEventListener('click', () => {
+      if (poller) {
+        const wasPolling = poller.isPolling;
+
+        if (wasPolling) {
+          poller.stopPolling();
+        }
+
+        poller.configure({
+          url: urlInput.value,
+          interval: parseInt(intervalInput.value, 10)
+        });
+
+        if (wasPolling) {
+          poller.startPolling();
+        }
+
+        addLog('Updated configuration', 'success');
+      }
+    });
+
+    // Update "time ago" display
+    setInterval(() => {
+      const lastUpdateText = lastUpdateEl.textContent;
+      if (lastUpdateText !== 'Never' && !lastUpdateText.startsWith('Just')) {
+        // Force re-render if needed
+      }
+    }, 1000);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (poller) {
+        poller.destroy();
+      }
+    });
+
+    // Initialize immediately
+    initPoller();
+    addLog('Page loaded - Ready to start polling', 'info');
+  </script>
+</body>
+</html>
